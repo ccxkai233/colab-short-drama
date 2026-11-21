@@ -18,12 +18,12 @@ groups:
         repo_filename: "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
         target_dir: "models/text_encoders"
         local_filename: "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
-      - name: "MiniMax H3 Video VAE (int8_convrot)"
+      - name: "MiniMax H3 Video VAE (fp16 原精度)"
         type: file
         repo_id: "Comfy-Org/MiniMax-H3"
-        repo_filename: "vae/minimax_h3_video_vae_int8_convrot.safetensors"
+        repo_filename: "vae/minimax_h3_video_vae_fp16.safetensors"
         target_dir: "models/vae"
-        local_filename: "minimax_h3_video_vae_int8_convrot.safetensors"
+        local_filename: "minimax_h3_video_vae_fp16.safetensors"
       - name: "MiniMax H3 Audio VAE (fp32)"
         type: file
         repo_id: "Comfy-Org/MiniMax-H3"
