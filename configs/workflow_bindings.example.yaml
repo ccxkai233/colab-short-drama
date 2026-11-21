@@ -232,6 +232,249 @@ tasks:
           slot: 0
         prune_nodes: ["82"]
 
+  h3_t2va_turbo:
+    workflow: "workflows/h3_fl2va_turbo_api.json"
+    output_prefix_node:
+      node_id: "92"
+      input: "filename_prefix"
+    bindings:
+      prompt:
+        node_id: "30"
+        input: "prompt"
+      seed:
+        node_id: "15"
+        input: "noise_seed"
+        type: "int"
+      width:
+        node_id: "30"
+        input: "width"
+        type: "int"
+        align: 32
+      height:
+        node_id: "30"
+        input: "height"
+        type: "int"
+        align: 32
+      duration_sec:
+        node_id: "30"
+        input: "length"
+        type: "h3_seconds"
+      length:
+        node_id: "30"
+        input: "length"
+        type: "h3_frames"
+      steps:
+        node_id: "9"
+        input: "steps"
+        type: "int"
+      turbo_strength:
+        node_id: "121"
+        input: "strength_model"
+        type: "float"
+      first_frame:
+        node_id: "50"
+        input: "image"
+        upload: true
+        connect_to:
+          node_id: "30"
+          input: "first_frame"
+          slot: 0
+        prune_nodes: ["50"]
+      last_frame:
+        node_id: "51"
+        input: "image"
+        upload: true
+        connect_to:
+          node_id: "30"
+          input: "last_frame"
+          slot: 0
+        prune_nodes: ["51"]
+
+  h3_i2va_turbo:
+    workflow: "workflows/h3_fl2va_turbo_api.json"
+    output_prefix_node:
+      node_id: "92"
+      input: "filename_prefix"
+    bindings:
+      prompt:
+        node_id: "30"
+        input: "prompt"
+      seed:
+        node_id: "15"
+        input: "noise_seed"
+        type: "int"
+      width:
+        node_id: "30"
+        input: "width"
+        type: "int"
+        align: 32
+      height:
+        node_id: "30"
+        input: "height"
+        type: "int"
+        align: 32
+      duration_sec:
+        node_id: "30"
+        input: "length"
+        type: "h3_seconds"
+      length:
+        node_id: "30"
+        input: "length"
+        type: "h3_frames"
+      steps:
+        node_id: "9"
+        input: "steps"
+        type: "int"
+      turbo_strength:
+        node_id: "121"
+        input: "strength_model"
+        type: "float"
+      image:
+        node_id: "50"
+        input: "image"
+        upload: true
+        connect_to:
+          node_id: "30"
+          input: "first_frame"
+          slot: 0
+        prune_nodes: ["50"]
+      first_frame:
+        node_id: "50"
+        input: "image"
+        upload: true
+        connect_to:
+          node_id: "30"
+          input: "first_frame"
+          slot: 0
+        prune_nodes: ["50"]
+      last_frame:
+        node_id: "51"
+        input: "image"
+        upload: true
+        connect_to:
+          node_id: "30"
+          input: "last_frame"
+          slot: 0
+        prune_nodes: ["51"]
+
+  h3_r2v_turbo:
+    workflow: "workflows/h3_r2v_turbo_api.json"
+    output_prefix_node:
+      node_id: "92"
+      input: "filename_prefix"
+    bindings:
+      prompt:
+        node_id: "30"
+        input: "prompt"
+      seed:
+        node_id: "15"
+        input: "noise_seed"
+        type: "int"
+      width:
+        node_id: "30"
+        input: "width"
+        type: "int"
+        align: 32
+      height:
+        node_id: "30"
+        input: "height"
+        type: "int"
+        align: 32
+      duration_sec:
+        node_id: "30"
+        input: "length"
+        type: "h3_seconds"
+      length:
+        node_id: "30"
+        input: "length"
+        type: "h3_frames"
+      ref_image_size:
+        node_id: "30"
+        input: "ref_image_size"
+      steps:
+        node_id: "9"
+        input: "steps"
+        type: "int"
+      turbo_strength:
+        node_id: "121"
+        input: "strength_model"
+        type: "float"
+      ref_image_1:
+        node_id: "61"
+        input: "image"
+        upload: true
+        connect_to:
+          node_id: "30"
+          input: "ref_images.ref_image_0"
+          slot: 0
+        prune_nodes: ["61"]
+      ref_image_2:
+        node_id: "62"
+        input: "image"
+        upload: true
+        connect_to:
+          node_id: "30"
+          input: "ref_images.ref_image_1"
+          slot: 0
+        prune_nodes: ["62"]
+      ref_image_3:
+        node_id: "63"
+        input: "image"
+        upload: true
+        connect_to:
+          node_id: "30"
+          input: "ref_images.ref_image_2"
+          slot: 0
+        prune_nodes: ["63"]
+      ref_video_1:
+        node_id: "70"
+        input: "file"
+        upload: true
+        connect_to:
+          source_node_id: "71"
+          node_id: "30"
+          input: "ref_videos.ref_video_0"
+          slot: 0
+        prune_nodes: ["70", "71"]
+      ref_video_1_use_audio:
+        boolean_connect:
+          source_node_id: "71"
+          node_id: "30"
+          input: "ref_video_audios.ref_video_audio_0"
+          slot: 1
+      ref_audio_1:
+        node_id: "81"
+        input: "audio"
+        upload: true
+        connect_to:
+          node_id: "30"
+          input: "ref_audios.ref_audio_0"
+          slot: 0
+        prune_nodes: ["81"]
+      ref_audio_2:
+        node_id: "82"
+        input: "audio"
+        upload: true
+        connect_to:
+          node_id: "30"
+          input: "ref_audios.ref_audio_1"
+          slot: 0
+        prune_nodes: ["82"]
+
+  upscale_video:
+    workflow: "workflows/upscale_video_2x_api.json"
+    output_prefix_node:
+      node_id: "92"
+      input: "filename_prefix"
+    bindings:
+      video:
+        node_id: "10"
+        input: "file"
+        upload: true
+      upscale_model:
+        node_id: "20"
+        input: "model_name"
+
   t2i_flux:
     workflow: "workflows/t2i_flux_api.json"
     output_prefix_node:

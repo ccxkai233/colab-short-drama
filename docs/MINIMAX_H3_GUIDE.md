@@ -62,6 +62,29 @@ python3 scripts/preprocess_media.py --loudnorm
 # 2. 离线演练 MiniMax H3 分镜表（验证 17k+5 帧数换算、32 倍数对齐、动态参考口连线与占位节点裁剪）
 python3 scripts/batch_runner.py --storyboard examples/storyboard_h3_sample.json --dry-run
 
-# 3. 正式提交云端渲染
+# 3. 正式提交云端渲染（单机读 COLAB_API_URL，多机自动读 COLAB_API_URLS 并行抢单）
 python3 scripts/batch_runner.py --storyboard examples/storyboard_h3_sample.json
 ```
+
+---
+
+## 五、多实例并发加速、Turbo 8 步试戏与 2x 视频超分
+
+### 1. 多台 Colab L4 并行抢单（总算力不变，耗时除以 N）
+1. 在浏览器开 2~3 个 Colab 标签页，分别运行 `ShortDrama_ComfyUI.ipynb`（Cell 4 已为每台实例分配独立 `worker_id`，多台共用同一 Google Drive 不会覆盖日志）。
+2. 把各台打印出的 `trycloudflare.com` 地址用英文逗号拼进 `.env` 的 `COLAB_API_URLS`（或命令行直接传 `--urls`）：
+   ```bash
+   # 一键并行体检全部实例
+   python3 scripts/check_cloud.py
+
+   # 多实例并发抢单渲染（某台断线时自动把镜头退回队列由存活节点接管）
+   python3 scripts/batch_runner.py --storyboard workspace/storyboards/my_ep01.json
+   ```
+
+### 2. Turbo 8 步 / 4 步草稿试戏模式
+- 在 Colab Cell 3 勾选 **`DOWNLOAD_MINIMAX_H3_TURBO`**（首次落盘到 `Drive/loras/`，之后永久持久化无需重下）。
+- 分镜表中把 `task_type` 设为 `h3_i2va_turbo` / `h3_t2va_turbo`（8 步）或 `h3_r2v_turbo`（4 步），耗时降至约 1/3；定稿出正片时改回 `h3_i2va` / `h3_r2v` 跑 20~25 步。
+
+### 3. 2x 视频高清超分（保留原演技与原音轨）
+- Cell 3 默认勾选 **`DOWNLOAD_UPSCALE_2X`**（`RealESRGAN_x2plus.pth`，仅 64 MB）。
+- 若某条低清试戏片表演与台词已经极佳、不想重抽，直接在分镜表建一条 `task_type: "upscale_video"` 并填 `"video": "路径/原片.mp4"` 即可 2 倍超分（`960×544 → 1920×1088`，`768×1344 → 1536×2688`），原音轨与帧率 100% 无损保留。

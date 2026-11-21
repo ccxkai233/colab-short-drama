@@ -70,6 +70,17 @@ groups:
         target_dir: "models/loras"
         local_filename: "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors"
 
+  # 0.4 视频 2x 高清超分模型（仅 64 MB，960x544 -> 1920x1088 / 768x1344 -> 1536x2688，保留原音轨与帧率）
+  upscale_2x:
+    description: "RealESRGAN x2plus 2x 视频高清超分模型（64 MB，原生 ComfyUI 节点零插件）"
+    items:
+      - name: "RealESRGAN_x2plus (2x Upscaler)"
+        type: file
+        repo_id: "dtarnow/UPscaler"
+        repo_filename: "RealESRGAN_x2plus.pth"
+        target_dir: "models/upscale_models"
+        local_filename: "RealESRGAN_x2plus.pth"
+
   # 1. LatentSync 1.6 对口型（含必需的离线 VAE）
   latentsync:
     description: "ByteDance LatentSync-1.6 + 必需离线 VAE (stabilityai/sd-vae-ft-mse)"

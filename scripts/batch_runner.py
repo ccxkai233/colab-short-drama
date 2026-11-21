@@ -19,8 +19,11 @@ import copy
 import csv
 import json
 import os
+import queue
 import random
+import re
 import sys
+import threading
 import time
 import urllib.parse
 import uuid
@@ -189,7 +192,13 @@ class ComfyBatchClient:
         ws_scheme = "wss" if parsed.scheme == "https" else "ws"
         return f"{ws_scheme}://{parsed.netloc}{parsed.path}/ws?clientId={self.client_id}"
 
-    def wait_for_completion(self, prompt_id: str, timeout_sec: float = 1200.0) -> dict[str, Any]:
+    def wait_for_completion(
+        self,
+        prompt_id: str,
+        timeout_sec: float = 1200.0,
+        *,
+        quiet_progress: bool = False,
+    ) -> dict[str, Any]:
         deadline = time.monotonic() + timeout_sec
 
         # 1) 优先用 WebSocket 实时监听进度，若断线或未装库则平滑降级到 HTTP 轮询
@@ -216,16 +225,18 @@ class ComfyBatchClient:
                             continue
                         if mtype == "progress":
                             val, mx = mdata.get("value", 0), mdata.get("max", 0)
-                            if mx:
+                            if mx and not quiet_progress:
                                 print(f"    ⏳ 渲染进度: {val}/{mx}", end="\r", flush=True)
                         elif mtype == "execution_error":
-                            print("", flush=True)
+                            if not quiet_progress:
+                                print("", flush=True)
                             raise RuntimeError(
                                 f"节点 {mdata.get('node_id')} ({mdata.get('node_type')}) 执行异常: "
                                 f"{mdata.get('exception_type')}: {mdata.get('exception_message')}"
                             )
                         elif mtype == "executing" and mdata.get("node") is None:
-                            print("", flush=True)
+                            if not quiet_progress:
+                                print("", flush=True)
                             hist = self._fetch_prompt_history(prompt_id)
                             if hist is not None:
                                 return hist
@@ -235,7 +246,8 @@ class ComfyBatchClient:
             except RuntimeError:
                 raise
             except Exception as exc:
-                print(f"    ⚠️ WebSocket 监听中断，自动切换为 HTTP 轮询 ({type(exc).__name__})", flush=True)
+                if not quiet_progress:
+                    print(f"    ⚠️ WebSocket 监听中断，自动切换为 HTTP 轮询 ({type(exc).__name__})", flush=True)
 
         # 2) HTTP /history 轮询兜底
         while time.monotonic() < deadline:
@@ -430,22 +442,56 @@ def load_state(state_path: Path) -> dict[str, Any]:
 def save_state(state_path: Path, state: dict[str, Any]) -> None:
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state["updated_at_utc"] = datetime.now(timezone.utc).isoformat()
-    state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path = state_path.with_suffix(state_path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path.replace(state_path)
+
+
+def parse_api_urls(cli_urls: str | None, cli_url: str | None) -> list[str]:
+    """解析单节点或多节点并发 URL 列表，优先级：--urls > --url > COLAB_API_URLS > COLAB_API_URL。"""
+    raw = cli_urls or cli_url or os.environ.get("COLAB_API_URLS") or os.environ.get("COLAB_API_URL") or ""
+    urls: list[str] = []
+    seen: set[str] = set()
+    for part in re.split(r"[,;\s]+", raw.strip()):
+        u = part.strip().rstrip("/")
+        if not u or "replace-with-your-tunnel" in u:
+            continue
+        if u not in seen:
+            seen.add(u)
+            urls.append(u)
+    return urls
+
+
+def is_node_unavailable_error(exc: Exception) -> bool:
+    """判断异常是否属于云端实例断连/隧道失效（多节点模式下触发自动摘除并重排给其他节点）。"""
+    if isinstance(exc, (requests.ConnectionError, requests.Timeout)):
+        return True
+    if isinstance(exc, requests.HTTPError) and exc.response is not None:
+        return exc.response.status_code in (502, 503, 504, 520, 521, 522, 523, 524, 530)
+    msg = str(exc)
+    if any(f"HTTP {code}" in msg for code in (502, 503, 504, 520, 521, 522, 523, 524, 530)):
+        return True
+    return False
 
 
 def parse_args() -> argparse.Namespace:
     load_dotenv_fallback()
-    parser = argparse.ArgumentParser(description="Short-Drama-Factory 云端 ComfyUI API 批量调度脚本")
+    parser = argparse.ArgumentParser(description="Short-Drama-Factory 云端 ComfyUI API 批量调度脚本（支持多实例并发抢单）")
     parser.add_argument("--storyboard", required=True, help="分镜表路径（.csv 或 .json）")
     parser.add_argument(
         "--bindings",
-        default=os.environ.get("WORKFLOW_BINDINGS_FILE", "configs/workflow_bindings.example.yaml"),
+        default=os.environ.get("WORKFLOW_BINDINGS_FILE", "configs/workflow_bindings.yaml"),
         help="工作流节点映射配置文件",
     )
     parser.add_argument(
         "--url",
-        default=os.environ.get("COLAB_API_URL"),
-        help="Colab cloudflared 地址（默认读 .env COLAB_API_URL）",
+        default=None,
+        help="单个云端 ComfyUI 地址（默认读 .env COLAB_API_URLS 或 COLAB_API_URL）",
+    )
+    parser.add_argument(
+        "--urls",
+        default=None,
+        help="多个云端 ComfyUI 地址（英文逗号分隔，启用多实例并发抢单池）",
     )
     parser.add_argument("--media-dir", default="workspace/clean_input", help="本地清洗后素材目录")
     parser.add_argument("--output-dir", default="workspace/output", help="成片自动拉回归档目录")
@@ -454,7 +500,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--timeout",
         type=float,
-        default=float(os.environ.get("JOB_TIMEOUT_SECONDS", "1200")),
+        default=float(os.environ.get("JOB_TIMEOUT_SECONDS", "3600")),
         help="单镜头超时秒数",
     )
     parser.add_argument(
@@ -487,21 +533,26 @@ def main() -> int:
 
     only_set = {s.strip() for s in args.only_shots.split(",") if s.strip()}
 
-    client: ComfyBatchClient | None = None
+    api_urls: list[str] = []
     if not args.dry_run:
-        url = (args.url or "").strip().rstrip("/")
-        if not url or "replace-with-your-tunnel" in url:
+        api_urls = parse_api_urls(args.urls, args.url)
+        if not api_urls:
             raise SystemExit(
-                "❌ 未配置有效的 COLAB_API_URL。请通过 --url 传入或在 .env 中设置（离线演练可加 --dry-run）。"
+                "❌ 未配置有效的云端 ComfyUI 地址。请通过 --url / --urls 传入，或在 .env 中设置 COLAB_API_URL / COLAB_API_URLS（离线演练可加 --dry-run）。"
             )
-        client = ComfyBatchClient(url, poll_interval=args.poll_interval)
-        print(f"🚀 已绑定云端渲染节点: {url} | 监听模式: {'WebSocket+HTTP兜底' if HAS_WEBSOCKET else 'HTTP轮询'}")
+        if len(api_urls) == 1:
+            print(f"🚀 已绑定云端渲染节点: {api_urls[0]} | 监听模式: {'WebSocket+HTTP兜底' if HAS_WEBSOCKET else 'HTTP轮询'}")
+        else:
+            print(f"🚀 已启动多实例并发抢单池（共 {len(api_urls)} 台云端节点并行）:")
+            for wi, u in enumerate(api_urls, start=1):
+                print(f"   - [W{wi}] {u}")
     else:
         print("🔍 [DRY-RUN 模式] 仅验证参数替换与工作流映射，不向云端发送请求。")
 
     ok_count = 0
     skip_count = 0
     fail_count = 0
+    pending_jobs: list[tuple[int, dict[str, Any]]] = []
 
     for idx, shot in enumerate(shots, start=1):
         shot_id = str(shot.get("shot_id") or f"SHOT_{idx:03d}")
@@ -526,9 +577,8 @@ def main() -> int:
             fail_count += 1
             continue
 
-        print(f"\n🎬 [{idx}/{len(shots)}] 开始处理镜头 {shot_id} | 类型: {task_type}")
-
         if args.dry_run:
+            print(f"\n🎬 [{idx}/{len(shots)}] 开始处理镜头 {shot_id} | 类型: {task_type}")
             try:
                 wf_payload, seed = build_prompt_payload(
                     shot,
@@ -548,59 +598,145 @@ def main() -> int:
                 fail_count += 1
             continue
 
-        assert client is not None
-        last_err: str | None = None
-        for attempt in range(1, args.max_retries + 2):
+        pending_jobs.append((idx, shot))
+
+    if args.dry_run or not pending_jobs:
+        print(f"\n📊 批量调度汇总: 成功 {ok_count} | 跳过 {skip_count} | 失败 {fail_count}")
+        return 1 if fail_count > 0 else 0
+
+    # 构建多节点动态抢单队列（单节点时等价于串行执行）
+    job_q: queue.Queue[tuple[int, dict[str, Any], int]] = queue.Queue()
+    for idx, shot in pending_jobs:
+        job_q.put((idx, shot, 0))
+
+    multi_worker = len(api_urls) > 1
+    state_lock = threading.Lock()
+    print_lock = threading.Lock()
+    counters = {"ok": ok_count, "fail": fail_count, "alive_workers": len(api_urls)}
+
+    def log_line(prefix: str, msg: str) -> None:
+        with print_lock:
+            print(f"{prefix}{msg}", flush=True)
+
+    def worker_loop(worker_idx: int, url: str) -> None:
+        tag = f"[W{worker_idx}] " if multi_worker else ""
+        client = ComfyBatchClient(url, poll_interval=args.poll_interval)
+        while True:
             try:
-                t0 = time.monotonic()
-                wf_payload, seed = build_prompt_payload(
-                    shot,
-                    tasks_cfg[task_type],
-                    client=client,
-                    media_dir=media_dir,
-                    no_upload=args.no_upload,
-                )
-                prompt_id = client.submit_prompt(wf_payload)
-                print(f"    📨 已入队 (attempt {attempt}) | prompt_id={prompt_id} | seed={seed}", flush=True)
+                idx, shot, prior_fails = job_q.get_nowait()
+            except queue.Empty:
+                return
 
-                hist = client.wait_for_completion(prompt_id, timeout_sec=args.timeout)
-                saved = client.download_outputs(hist, output_dir / shot_id, shot_id, task_type)
-                elapsed = round(time.monotonic() - t0, 1)
+            shot_id = str(shot["shot_id"])
+            task_type = str(shot["task_type"])
+            log_line(tag, f"\n🎬 [{idx}/{len(shots)}] 开始处理镜头 {shot_id} | 类型: {task_type}")
 
-                state["shots"][shot_id] = {
-                    "status": "done",
-                    "task_type": task_type,
-                    "prompt_id": prompt_id,
-                    "seed": seed,
-                    "elapsed_sec": elapsed,
-                    "outputs": saved,
-                    "finished_at_utc": datetime.now(timezone.utc).isoformat(),
-                }
-                save_state(state_path, state)
-                print(f"    ✅ 镜头 {shot_id} 渲染并回收完成 ({elapsed}s) -> {len(saved)} 个文件")
-                for p in saved:
-                    print(f"       📁 {p}")
-                ok_count += 1
-                last_err = None
-                break
-            except Exception as exc:
-                last_err = f"{type(exc).__name__}: {exc}"
-                print(f"    ⚠️ 第 {attempt} 次尝试失败: {last_err}", flush=True)
-                if attempt <= args.max_retries:
-                    time.sleep(3)
+            last_err: str | None = None
+            node_dead = False
+            max_total_attempts = args.max_retries + 1
 
-        if last_err is not None:
+            for local_try in range(prior_fails + 1, max_total_attempts + 1):
+                try:
+                    t0 = time.monotonic()
+                    wf_payload, seed = build_prompt_payload(
+                        shot,
+                        tasks_cfg[task_type],
+                        client=client,
+                        media_dir=media_dir,
+                        no_upload=args.no_upload,
+                    )
+                    prompt_id = client.submit_prompt(wf_payload)
+                    log_line(tag, f"    📨 已入队 (attempt {local_try}) | prompt_id={prompt_id} | seed={seed}")
+
+                    hist = client.wait_for_completion(
+                        prompt_id,
+                        timeout_sec=args.timeout,
+                        quiet_progress=multi_worker,
+                    )
+                    saved = client.download_outputs(hist, output_dir / shot_id, shot_id, task_type)
+                    elapsed = round(time.monotonic() - t0, 1)
+
+                    with state_lock:
+                        state["shots"][shot_id] = {
+                            "status": "done",
+                            "task_type": task_type,
+                            "worker_url": url,
+                            "prompt_id": prompt_id,
+                            "seed": seed,
+                            "elapsed_sec": elapsed,
+                            "outputs": saved,
+                            "finished_at_utc": datetime.now(timezone.utc).isoformat(),
+                        }
+                        save_state(state_path, state)
+                        counters["ok"] += 1
+
+                    lines = [f"    ✅ 镜头 {shot_id} 渲染并回收完成 ({elapsed}s) -> {len(saved)} 个文件"]
+                    lines.extend(f"       📁 {p}" for p in saved)
+                    log_line(tag, "\n".join(lines))
+                    last_err = None
+                    break
+                except Exception as exc:
+                    last_err = f"{type(exc).__name__}: {exc}"
+                    log_line(tag, f"    ⚠️ 第 {local_try} 次尝试失败: {last_err}")
+
+                    if multi_worker and is_node_unavailable_error(exc):
+                        with state_lock:
+                            counters["alive_workers"] -= 1
+                            remaining_alive = counters["alive_workers"]
+                        node_dead = True
+                        if remaining_alive > 0 and local_try < max_total_attempts:
+                            log_line(tag, f"    🔄 节点疑似断线，已摘除该节点并将 {shot_id} 退回队列由其他在线节点接管。")
+                            job_q.put((idx, shot, local_try))
+                            last_err = None
+                        else:
+                            log_line(tag, f"    🛑 节点已断线且无可用备用节点接管 {shot_id}。")
+                        break
+
+                    if local_try < max_total_attempts:
+                        time.sleep(3)
+
+            if last_err is not None:
+                with state_lock:
+                    state["shots"][shot_id] = {
+                        "status": "failed",
+                        "task_type": task_type,
+                        "worker_url": url,
+                        "error": last_err,
+                        "failed_at_utc": datetime.now(timezone.utc).isoformat(),
+                    }
+                    save_state(state_path, state)
+                    counters["fail"] += 1
+
+            job_q.task_done()
+            if node_dead:
+                return
+
+    threads = [
+        threading.Thread(target=worker_loop, args=(wi, u), name=f"worker-{wi}", daemon=False)
+        for wi, u in enumerate(api_urls, start=1)
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    # 若全部节点中途断线导致队列仍有未领任务，标记失败
+    while not job_q.empty():
+        idx, shot, _ = job_q.get_nowait()
+        shot_id = str(shot["shot_id"])
+        with state_lock:
             state["shots"][shot_id] = {
                 "status": "failed",
-                "task_type": task_type,
-                "error": last_err,
+                "task_type": str(shot["task_type"]),
+                "error": "所有云端渲染节点均已离线，未能执行该镜头。",
                 "failed_at_utc": datetime.now(timezone.utc).isoformat(),
             }
             save_state(state_path, state)
-            fail_count += 1
+            counters["fail"] += 1
+        job_q.task_done()
 
-    print(f"\n📊 批量调度汇总: 成功 {ok_count} | 跳过 {skip_count} | 失败 {fail_count}")
-    return 1 if fail_count > 0 else 0
+    print(f"\n📊 批量调度汇总: 成功 {counters['ok']} | 跳过 {skip_count} | 失败 {counters['fail']}")
+    return 1 if counters["fail"] > 0 else 0
 
 
 if __name__ == "__main__":

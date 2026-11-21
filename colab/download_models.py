@@ -105,6 +105,19 @@ FALLBACK_MANIFEST: dict[str, Any] = {
                 },
             ],
         },
+        "upscale_2x": {
+            "description": "RealESRGAN x2plus 2x 视频高清超分模型（64 MB）",
+            "items": [
+                {
+                    "name": "RealESRGAN_x2plus (2x Upscaler)",
+                    "type": "file",
+                    "repo_id": "dtarnow/UPscaler",
+                    "repo_filename": "RealESRGAN_x2plus.pth",
+                    "target_dir": "models/upscale_models",
+                    "local_filename": "RealESRGAN_x2plus.pth",
+                },
+            ],
+        },
         "latentsync": {
             "description": "ByteDance LatentSync-1.6 + 必需离线 VAE (stabilityai/sd-vae-ft-mse)",
             "items": [
