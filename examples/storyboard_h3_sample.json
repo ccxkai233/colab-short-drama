@@ -1,0 +1,39 @@
+{
+  "project": "EP01_MiniMaxH3_Demo",
+  "shots": [
+    {
+      "shot_id": "H001",
+      "task_type": "h3_t2va",
+      "width": 544,
+      "height": 960,
+      "duration_sec": 5,
+      "steps": 20,
+      "seed": 3001,
+      "prompt": "integrated_multimodal_description:\n[Shot 1] 00:00.000 - 00:02.500: Vertical 9:16 cinematic establishing shot of a rain-soaked neon alley at night, a glowing red storefront sign reading \"营业中\" reflecting in wet puddles, slow push-in.\n[Shot 2] At 00:02.500, the camera cuts to a medium close-up of a 26yo Chinese woman in a dark trench coat lowering a black umbrella, rain droplets on her sleeve, looking intently off-camera.\noverall_soundscape:\nSteady rain pattering on asphalt and umbrella fabric, subtle distant city traffic hum.\nnon_diegetic_music:\nN/A"
+    },
+    {
+      "shot_id": "H002",
+      "task_type": "h3_i2va",
+      "first_frame": "T001_t2i_flux_00001_.png",
+      "width": 544,
+      "height": 960,
+      "duration_sec": 5,
+      "steps": 20,
+      "seed": 3002,
+      "prompt": "integrated_multimodal_description:\n[Shot 1] 00:00.000 - 00:05.000: Opening directly from the first frame, the camera performs a slow intimate push-in toward the woman in the dark coat under neon rain. She blinks slowly, raises her chin with calm resolve, and speaks softly in a steady Mandarin female voice, (S1) 别躲了，我知道你一直在后面。\noverall_soundscape:\nSoft rain falling on leather collar and quiet midnight street ambience.\nnon_diegetic_music:\nN/A"
+    },
+    {
+      "shot_id": "H003",
+      "task_type": "h3_r2v",
+      "ref_image_1": "T001_t2i_flux_00001_.png",
+      "ref_audio_1": "voice_linwan_ref.wav",
+      "ref_image_size": "match",
+      "width": 544,
+      "height": 960,
+      "duration_sec": 5,
+      "steps": 20,
+      "seed": 3003,
+      "prompt": "Keep the face, hairstyle, and dark coat of the woman in <Picture 1>. Follow the vocal timbre and calm cadence of <Audio 1> for speaker (S1).\n\nintegrated_multimodal_description:\n[Shot 1] 00:00.000 - 00:02.400: Over-the-shoulder vertical 9:16 shot inside a dimly lit coffee shop by a rainy window, neon reflection reading \"OPEN\" outside. The woman from <Picture 1> sets down a porcelain cup cleanly on the saucer.\n[Shot 2] At 00:02.400, cut to a close-up of her face turning toward the camera with a sharp gaze; she speaks clearly in Mandarin, (S1) 合同我已经签好了，明天早上九点见。\noverall_soundscape:\nPorcelain cup clinking softly against saucer, muffled rain tapping on window glass.\nnon_diegetic_music:\nN/A"
+    }
+  ]
+}

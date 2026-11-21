@@ -29,6 +29,82 @@ from typing import Any
 # 内置兜底清单：即使只复制了 colab/ 目录、未复制 configs/models.yaml，依然可完整运行
 FALLBACK_MANIFEST: dict[str, Any] = {
     "groups": {
+        "minimax_h3_core": {
+            "description": "MiniMax H3 必选核心（Qwen3-VL-32B NVFP4 + Video/Audio 双 VAE）",
+            "items": [
+                {
+                    "name": "Qwen3-VL-32B MiniMax H3 Text Encoder (NVFP4 AWQ)",
+                    "type": "file",
+                    "repo_id": "Comfy-Org/MiniMax-H3",
+                    "repo_filename": "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+                    "target_dir": "models/text_encoders",
+                    "local_filename": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+                },
+                {
+                    "name": "MiniMax H3 Video VAE (int8_convrot)",
+                    "type": "file",
+                    "repo_id": "Comfy-Org/MiniMax-H3",
+                    "repo_filename": "vae/minimax_h3_video_vae_int8_convrot.safetensors",
+                    "target_dir": "models/vae",
+                    "local_filename": "minimax_h3_video_vae_int8_convrot.safetensors",
+                },
+                {
+                    "name": "MiniMax H3 Audio VAE (fp32)",
+                    "type": "file",
+                    "repo_id": "Comfy-Org/MiniMax-H3",
+                    "repo_filename": "vae/minimax_h3_audio_vae_fp32.safetensors",
+                    "target_dir": "models/vae",
+                    "local_filename": "minimax_h3_audio_vae_fp32.safetensors",
+                },
+            ],
+        },
+        "minimax_h3_fl2va": {
+            "description": "MiniMax H3 FL2VA 主权重（T2VA / 首尾帧 I2VA 专用）",
+            "items": [
+                {
+                    "name": "MiniMax H3 FL2VA Pruned (int8_convrot)",
+                    "type": "file",
+                    "repo_id": "Comfy-Org/MiniMax-H3",
+                    "repo_filename": "diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+                    "target_dir": "models/diffusion_models",
+                    "local_filename": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+                },
+            ],
+        },
+        "minimax_h3_ref2va": {
+            "description": "MiniMax H3 REF2VA 主权重（R2V 多图/视频/音频全参考专用）",
+            "items": [
+                {
+                    "name": "MiniMax H3 REF2VA Pruned (int8_convrot)",
+                    "type": "file",
+                    "repo_id": "Comfy-Org/MiniMax-H3",
+                    "repo_filename": "diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+                    "target_dir": "models/diffusion_models",
+                    "local_filename": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+                },
+            ],
+        },
+        "minimax_h3_turbo": {
+            "description": "MiniMax H3 Turbo 加速 LoRA（FL2V 8步 + REF2V 4步，草稿抽卡用）",
+            "items": [
+                {
+                    "name": "MiniMax H3 FL2V Turbo 8-step LoRA",
+                    "type": "file",
+                    "repo_id": "Comfy-Org/MiniMax-H3",
+                    "repo_filename": "loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+                    "target_dir": "models/loras",
+                    "local_filename": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+                },
+                {
+                    "name": "MiniMax H3 REF2V Turbo 4-step LoRA",
+                    "type": "file",
+                    "repo_id": "Comfy-Org/MiniMax-H3",
+                    "repo_filename": "loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+                    "target_dir": "models/loras",
+                    "local_filename": "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+                },
+            ],
+        },
         "latentsync": {
             "description": "ByteDance LatentSync-1.6 + 必需离线 VAE (stabilityai/sd-vae-ft-mse)",
             "items": [

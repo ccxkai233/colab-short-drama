@@ -1,0 +1,153 @@
+{
+  "6": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "11": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
+    }
+  },
+  "24": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    }
+  },
+  "13": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    }
+  },
+  "61": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "__OPTIONAL_REF_IMAGE_1__"
+    }
+  },
+  "62": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "__OPTIONAL_REF_IMAGE_2__"
+    }
+  },
+  "63": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "__OPTIONAL_REF_IMAGE_3__"
+    }
+  },
+  "70": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "__OPTIONAL_REF_VIDEO_1__"
+    }
+  },
+  "71": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": ["70", 0]
+    }
+  },
+  "81": {
+    "class_type": "LoadAudio",
+    "inputs": {
+      "audio": "__OPTIONAL_REF_AUDIO_1__"
+    }
+  },
+  "82": {
+    "class_type": "LoadAudio",
+    "inputs": {
+      "audio": "__OPTIONAL_REF_AUDIO_2__"
+    }
+  },
+  "30": {
+    "class_type": "MiniMaxH3ReferenceToVideo",
+    "inputs": {
+      "clip": ["13", 0],
+      "vae": ["11", 0],
+      "audio_vae": ["24", 0],
+      "prompt": "Keep the face, hairstyle, and dark coat of the woman in <Picture 1>. Follow the timbre of <Audio 1> for speaker (S1).\n\nintegrated_multimodal_description:\n[Shot 1] 00:00.000 - 00:05.000: Medium close-up in a rainy neon alley beneath a glowing sign reading \"NIGHT\". The woman from <Picture 1> looks sharply at the camera and says calmly, (S1) 今晚的游戏，到此为止。\noverall_soundscape:\nSteady rain tapping on umbrellas and distant street ambience.\nnon_diegetic_music:\nN/A",
+      "width": 768,
+      "height": 1344,
+      "length": 124,
+      "ref_image_size": "match"
+    }
+  },
+  "15": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 20261121
+    }
+  },
+  "16": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": ["6", 0],
+      "conditioning": ["30", 0]
+    }
+  },
+  "17": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "res_multistep"
+    }
+  },
+  "9": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": ["6", 0],
+      "scheduler": "simple",
+      "steps": 20,
+      "denoise": 1.0
+    }
+  },
+  "14": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": ["15", 0],
+      "guider": ["16", 0],
+      "sampler": ["17", 0],
+      "sigmas": ["9", 0],
+      "latent_image": ["30", 1]
+    }
+  },
+  "10": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["14", 0],
+      "vae": ["11", 0]
+    }
+  },
+  "23": {
+    "class_type": "VAEDecodeAudio",
+    "inputs": {
+      "samples": ["14", 0],
+      "vae": ["24", 0]
+    }
+  },
+  "91": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": ["10", 0],
+      "audio": ["23", 0],
+      "fps": 24.0
+    }
+  },
+  "92": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": ["91", 0],
+      "filename_prefix": "SDF_h3_r2v",
+      "format": "auto",
+      "codec": "auto"
+    }
+  }
+}

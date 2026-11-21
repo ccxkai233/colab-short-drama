@@ -113,6 +113,8 @@ def process_audio(
     dst: Path,
     *,
     loudnorm: bool = False,
+    sample_rate: int = 32000,
+    channels: int = 1,
 ) -> tuple[bool, str]:
     dst.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
@@ -134,9 +136,9 @@ def process_audio(
     cmd.extend(
         [
             "-ac",
-            "1",
+            str(channels),
             "-ar",
-            "16000",
+            str(sample_rate),
             "-c:a",
             "pcm_s16le",
             str(dst),
@@ -152,10 +154,11 @@ def process_video(
     src: Path,
     dst: Path,
     *,
-    fps: float = 25.0,
+    fps: float = 24.0,
     max_side: int | None = None,
     crf: int = 18,
     strip_audio: bool = False,
+    audio_sr: int = 32000,
 ) -> tuple[bool, str]:
     dst.parent.mkdir(parents=True, exist_ok=True)
 
@@ -203,7 +206,7 @@ def process_video(
     if strip_audio:
         cmd.append("-an")
     else:
-        cmd.extend(["-c:a", "aac", "-ar", "16000", "-ac", "1", "-b:a", "128k"])
+        cmd.extend(["-c:a", "aac", "-ar", str(audio_sr), "-ac", "2", "-b:a", "192k"])
     cmd.extend(["-movflags", "+faststart", str(dst)])
 
     res = subprocess.run(cmd, capture_output=True, text=True)
@@ -271,7 +274,13 @@ def handle_single_file(
         return record
 
     if kind == "audio":
-        ok, msg = process_audio(src, dst, loudnorm=args.loudnorm)
+        ok, msg = process_audio(
+            src,
+            dst,
+            loudnorm=args.loudnorm,
+            sample_rate=args.audio_sr,
+            channels=args.audio_channels,
+        )
     elif kind == "video":
         ok, msg = process_video(
             src,
@@ -280,6 +289,7 @@ def handle_single_file(
             max_side=args.max_side,
             crf=args.crf,
             strip_audio=args.strip_audio,
+            audio_sr=args.audio_sr,
         )
     else:
         ok, msg = process_image(src, dst)
@@ -312,10 +322,16 @@ def parse_args() -> argparse.Namespace:
         help="处理的素材类型（默认 all）",
     )
     parser.add_argument(
+        "--profile",
+        choices=["h3", "latentsync"],
+        default="h3",
+        help="目标管线规格预设：h3（MiniMax H3 默认：24fps 视频 + 32kHz WAV）| latentsync（25fps + 16kHz 单声道 WAV）",
+    )
+    parser.add_argument(
         "--fps",
         type=float,
-        default=25.0,
-        help="视频统一目标帧率（LatentSync-1.6 默认 25，Wan 2.2 可选 16/24）",
+        default=None,
+        help="自定义视频统一目标帧率（不填则按 --profile 自动取 24fps 或 25fps）",
     )
     parser.add_argument(
         "--max-side",
@@ -334,6 +350,15 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    if args.profile == "h3":
+        args.fps = 24.0 if args.fps is None else args.fps
+        args.audio_sr = 32000
+        args.audio_channels = 2
+    else:
+        args.fps = 25.0 if args.fps is None else args.fps
+        args.audio_sr = 16000
+        args.audio_channels = 1
+
     if not args.dry_run:
         check_ffmpeg()
 
@@ -389,8 +414,9 @@ def main() -> int:
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "input_dir": str(input_root),
             "output_dir": str(output_root),
+            "profile": args.profile,
             "video_target_fps": args.fps,
-            "audio_format": "16kHz mono PCM_16 WAV",
+            "audio_format": f"{args.audio_sr}Hz {args.audio_channels}ch PCM_16 WAV",
             "summary": {"total": len(records), "ok": ok_cnt, "skipped": skip_cnt, "errors": err_cnt},
             "files": records,
         }

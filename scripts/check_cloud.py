@@ -133,11 +133,16 @@ def main() -> int:
     # 3. 核心节点探测
     obj_info = fetch_json(session, f"{base_url}/object_info", timeout=30.0)
     node_names = sorted(obj_info.keys()) if isinstance(obj_info, dict) else []
+    minimax_h3_nodes = [n for n in node_names if "minimaxh3" in n.lower()]
+    has_audio_vae_decode = "VAEDecodeAudio" in obj_info if isinstance(obj_info, dict) else False
     latentsync_nodes = [n for n in node_names if "latentsync" in n.lower()]
     inpaint_nodes = [n for n in node_names if "inpaintcrop" in n.lower() or "inpaintstitch" in n.lower()]
     wan_nodes = [n for n in node_names if "wan" in n.lower()]
     report["nodes_check"] = {
         "total_nodes": len(node_names),
+        "minimax_h3_loaded": bool(minimax_h3_nodes) and has_audio_vae_decode,
+        "minimax_h3_nodes": minimax_h3_nodes[:12],
+        "vae_decode_audio_loaded": has_audio_vae_decode,
         "latentsync_loaded": bool(latentsync_nodes),
         "latentsync_nodes": latentsync_nodes[:10],
         "inpaint_crop_stitch_loaded": bool(inpaint_nodes),
@@ -179,10 +184,14 @@ def main() -> int:
     )
 
     nc = report["nodes_check"]
-    print(f"\n🧩 核心插件节点检查（总节点数: {nc['total_nodes']}）:")
+    print(f"\n🧩 核心插件与原生节点检查（总节点数: {nc['total_nodes']}）:")
     print(
-        f"   {'✅' if nc['latentsync_loaded'] else '❌'} LatentSync-Enhanced: "
-        f"{', '.join(nc['latentsync_nodes']) if nc['latentsync_nodes'] else '未加载（请检查 Drive/logs/comfyui.log）'}"
+        f"   {'✅' if nc['minimax_h3_loaded'] else '❌'} MiniMax H3 原生音画节点: "
+        f"{', '.join(nc['minimax_h3_nodes']) if nc['minimax_h3_nodes'] else '未检测到（请升级 ComfyUI >= 0.45）'}"
+    )
+    print(
+        f"   {'✅' if nc['latentsync_loaded'] else '⚠️'} LatentSync-Enhanced (备用): "
+        f"{', '.join(nc['latentsync_nodes']) if nc['latentsync_nodes'] else '未加载（如仅用 MiniMax H3 可忽略）'}"
     )
     print(
         f"   {'✅' if nc['inpaint_crop_stitch_loaded'] else '❌'} Inpaint-CropAndStitch: "

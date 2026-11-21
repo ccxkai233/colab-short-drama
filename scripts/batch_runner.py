@@ -50,19 +50,39 @@ def load_dotenv_fallback(env_path: Path = Path(".env")) -> None:
         os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
 
 
-def cast_value(raw: Any, value_type: str | None) -> Any:
+def align_h3_frames(frame_count: int) -> int:
+    """MiniMax H3 帧数必须对齐 17k + 5（24fps），例如 73≈3s, 124≈5s, 243≈10s。"""
+    n = max(5, int(frame_count))
+    rem = (n - 5) % 17
+    if rem != 0:
+        n += 17 - rem
+    return n
+
+
+def cast_value(raw: Any, value_type: str | None, *, align: int | None = None) -> Any:
     if value_type is None:
-        return raw
-    t = value_type.lower()
-    if t == "int":
-        return int(float(raw))
-    if t == "float":
-        return float(raw)
-    if t == "bool":
-        if isinstance(raw, bool):
-            return raw
-        return str(raw).strip().lower() in ("1", "true", "yes", "y", "on")
-    return str(raw)
+        val: Any = raw
+    else:
+        t = value_type.lower()
+        if t == "int":
+            val = int(float(raw))
+        elif t == "float":
+            val = float(raw)
+        elif t == "bool":
+            if isinstance(raw, bool):
+                val = raw
+            else:
+                val = str(raw).strip().lower() in ("1", "true", "yes", "y", "on")
+        elif t == "h3_frames":
+            val = align_h3_frames(int(round(float(raw))))
+        elif t == "h3_seconds":
+            val = align_h3_frames(int(round(float(raw) * 24.0)))
+        else:
+            val = str(raw)
+
+    if align and isinstance(val, int) and align > 1:
+        val = max(align, int(round(val / align)) * align)
+    return val
 
 
 def load_storyboard(path: Path) -> list[dict[str, Any]]:
@@ -325,14 +345,33 @@ def build_prompt_payload(
         if pid in wf and "inputs" in wf[pid]:
             wf[pid]["inputs"][pkey] = f"{shot_id}_{task_type}"
 
-    # 按绑定配置替换各节点字段
+    # 按绑定配置替换各节点字段（支持可选节点动态连线与未用占位节点自动裁剪，适配 MiniMax H3 FL2VA/R2V）
     bindings: dict[str, Any] = task_cfg.get("bindings", {})
+    nodes_to_prune: set[str] = set()
+    active_nodes: set[str] = set()
+
     for field_name, bcfg in bindings.items():
+        # 1) 纯布尔开关连线（例如 ref_video_1_use_audio=true 时将 GetVideoComponents 音频口接入 R2V）
+        if bcfg.get("boolean_connect"):
+            raw_flag = shot.get(field_name)
+            enabled = cast_value(raw_flag, "bool") if raw_flag not in (None, "") else False
+            if enabled:
+                conn = bcfg["boolean_connect"]
+                src_nid = str(conn["source_node_id"])
+                dst_nid = str(conn["node_id"])
+                dst_inp = str(conn["input"])
+                slot = int(conn.get("slot", 0))
+                if src_nid in wf and src_nid not in nodes_to_prune and dst_nid in wf:
+                    wf[dst_nid].setdefault("inputs", {})[dst_inp] = [src_nid, slot]
+            continue
+
         if field_name == "seed":
             val: Any = resolved_seed
         else:
             val = shot.get(field_name)
             if val is None or val == "":
+                for pn in bcfg.get("prune_nodes", []):
+                    nodes_to_prune.add(str(pn))
                 continue
 
         if bcfg.get("upload"):
@@ -343,7 +382,7 @@ def build_prompt_payload(
                 print(f"    ⬆️  上传素材: {local_file.name}", flush=True)
                 val = client.upload_media(local_file)
 
-        val = cast_value(val, bcfg.get("type"))
+        val = cast_value(val, bcfg.get("type"), align=bcfg.get("align"))
         node_ids = bcfg["node_id"]
         if not isinstance(node_ids, list):
             node_ids = [node_ids]
@@ -356,6 +395,25 @@ def build_prompt_payload(
                     f"工作流 {wf_path} 中不存在节点 ID '{nid_str}'（字段 '{field_name}'），请检查 workflow_bindings.yaml。"
                 )
             wf[nid_str].setdefault("inputs", {})[input_key] = val
+            active_nodes.add(nid_str)
+
+        # 若配置了 connect_to，自动将该素材加载节点连接到目标核心节点（如 MiniMaxH3 的可选参考口）
+        conn = bcfg.get("connect_to")
+        if conn:
+            src_nid = str(conn.get("source_node_id", node_ids[0]))
+            dst_nid = str(conn["node_id"])
+            dst_inp = str(conn["input"])
+            slot = int(conn.get("slot", 0))
+            if dst_nid not in wf:
+                raise KeyError(
+                    f"工作流 {wf_path} 中不存在目标连线节点 ID '{dst_nid}'（字段 '{field_name}'）。"
+                )
+            wf[dst_nid].setdefault("inputs", {})[dst_inp] = [src_nid, slot]
+            active_nodes.add(src_nid)
+
+    # 裁剪未启用的可选占位节点（避免 ComfyUI 校验 __OPTIONAL_*__ 占位文件报错）
+    for pn in nodes_to_prune - active_nodes:
+        wf.pop(pn, None)
 
     return wf, resolved_seed
 
