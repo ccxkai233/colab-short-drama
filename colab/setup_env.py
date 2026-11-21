@@ -8,7 +8,7 @@ Short-Drama-Factory 云端环境一键部署脚本（Google Colab 专用）
   3. 克隆 ComfyUI 与三大核心插件：
      - ComfyUI-Manager
      - ComfyUI-Inpaint-CropAndStitch
-     - guardskill/comfyui-latentsync-enhanced
+     - GuardSkill/ComfyUI-LatentSyncEnhanced
   4. 使用 uv 极速安装依赖，并显式补齐 comfyui-latentsync-enhanced 缺失的依赖包，
      同时保护 Colab 预装的 CUDA PyTorch 不被意外覆盖。
   5. 输出环境体检快照到 Drive/logs/env_report.json，便于远程排障。
@@ -39,8 +39,8 @@ CORE_PLUGINS = [
         "https://github.com/lquesada/ComfyUI-Inpaint-CropAndStitch.git",
     ),
     (
-        "comfyui-latentsync-enhanced",
-        "https://github.com/guardskill/comfyui-latentsync-enhanced.git",
+        "ComfyUI-LatentSyncEnhanced",
+        "https://github.com/GuardSkill/ComfyUI-LatentSyncEnhanced.git",
     ),
 ]
 
@@ -124,7 +124,7 @@ def ensure_system_tools() -> None:
 
     if missing_apt and shutil.which("apt-get"):
         log(f"安装系统依赖: {', '.join(missing_apt)}")
-        run_cmd(["apt-get", "update", "-qq"])
+        run_cmd(["apt-get", "update", "-qq"], check=False)
         run_cmd(["apt-get", "install", "-y", "-qq", *missing_apt])
     else:
         log("ffmpeg / aria2 已就绪（或非 apt 环境，跳过）")
@@ -169,7 +169,7 @@ def ensure_uv() -> str:
 
 
 def uv_pip_install(uv_bin: str, args: Iterable[str], *, check: bool = True) -> bool:
-    cmd = [uv_bin, "pip", "install", "--system", "--quiet", *args]
+    cmd = [uv_bin, "pip", "install", "--system", "--break-system-packages", "--quiet", *args]
     res = subprocess.run(cmd, text=True)
     if res.returncode != 0:
         if check:

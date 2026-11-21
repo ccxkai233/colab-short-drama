@@ -15,7 +15,7 @@
    - **Colab 高速本地盘（`/content/ComfyUI`）**：存放 ComfyUI 本体与几十 GB 基础大模型，开机用 `HF_HUB_ENABLE_HF_TRANSFER=1` 满速直拉，关机自动清空。
 2. **云端已知坑位全自动处理**
    - 使用 `uv` 极速安装依赖，同时过滤 `torch/torchvision/torchaudio` 防止破坏 Colab 预装 CUDA 环境。
-   - 显式补全 `guardskill/comfyui-latentsync-enhanced` 缺失依赖（`insightface`、`onnxruntime-gpu`、`librosa`、`DeepCache`、`imageio`、`imageio-ffmpeg`、`soundfile`、`matplotlib`、`more-itertools`、`ffmpeg-python`）。
+   - 显式补全 `GuardSkill/ComfyUI-LatentSyncEnhanced` 缺失依赖（`insightface`、`onnxruntime-gpu`、`librosa`、`DeepCache`、`imageio`、`imageio-ffmpeg`、`soundfile`、`matplotlib`、`more-itertools`、`ffmpeg-python`）。
    - 自动将 `stabilityai/sd-vae-ft-mse` 拉取至 `models/checkpoints/LatentSync-1.6/vae/` 满足离线加载。
    - 内置 `colab/patch_latentsync.py` 运行态探测补丁：若当前云端 PyTorch/torchaudio/torchvision 触发 `torchaudio.save` 或 `torchvision.io.read_video` 报错，自动备份并替换为 `soundfile` + `cv2`。
    - 内置 `colab/idle_unassign.py` 空闲看门狗：任务队列清空并空闲满设定时间后自动执行 `google.colab.runtime.unassign()`，防止空转扣计算单元。
