@@ -1,0 +1,33 @@
+{
+  "10": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "video": "sample_face_25fps.mp4"
+    }
+  },
+  "11": {
+    "class_type": "LoadAudio",
+    "inputs": {
+      "audio": "sample_dialogue_16k.wav"
+    }
+  },
+  "20": {
+    "class_type": "LatentSyncNode",
+    "inputs": {
+      "images": ["10", 0],
+      "audio": ["11", 0],
+      "seed": 42,
+      "lips_expression": 1.5,
+      "inference_steps": 20
+    }
+  },
+  "40": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "filename_prefix": "SDF_lipsync",
+      "fps": 25.0,
+      "images": ["20", 0],
+      "audio": ["11", 0]
+    }
+  }
+}

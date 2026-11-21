@@ -1,0 +1,112 @@
+# 工作流节点绑定配置（将分镜表中的字段映射到 ComfyUI API JSON 的具体节点与输入键）
+#
+# 使用方法：
+#   1. 复制本文件为 configs/workflow_bindings.yaml
+#   2. 将从 ComfyUI「Save (API Format)」导出的 JSON 放进 workflows/
+#   3. 对照 JSON 里的节点 ID（如 "6", "12"）更新下方映射即可，无需修改 Python 代码
+#
+# 每个字段绑定支持：
+#   node_id:  目标节点 ID（字符串，也支持列表一次写入多个节点，例如 Wan 2.2 双阶段采样器）
+#   input:    节点 inputs 字典下的字段名
+#   upload:   (可选) true 表示该字段值为本地文件路径，提交前自动调用 /upload/image 上传到云端 input/
+#   type:     (可选) int | float | str | bool，用于把 CSV 字符串安全转换为数值类型
+
+tasks:
+  # 任务类型 1：FLUX 文生图分镜底图
+  t2i_flux:
+    workflow: "workflows/t2i_flux_api.example.json"
+    output_prefix_node:
+      node_id: "9"
+      input: "filename_prefix"
+    bindings:
+      prompt:
+        node_id: "6"
+        input: "text"
+      negative_prompt:
+        node_id: "7"
+        input: "text"
+      seed:
+        node_id: "3"
+        input: "seed"
+        type: "int"
+      width:
+        node_id: "5"
+        input: "width"
+        type: "int"
+      height:
+        node_id: "5"
+        input: "height"
+        type: "int"
+      steps:
+        node_id: "3"
+        input: "steps"
+        type: "int"
+      lora_name:
+        node_id: "10"
+        input: "lora_name"
+      lora_strength:
+        node_id: "10"
+        input: "strength_model"
+        type: "float"
+
+  # 任务类型 2：Wan 2.2 14B 图生视频
+  i2v_wan22:
+    workflow: "workflows/i2v_wan22_api.example.json"
+    output_prefix_node:
+      node_id: "60"
+      input: "filename_prefix"
+    bindings:
+      prompt:
+        node_id: "6"
+        input: "text"
+      negative_prompt:
+        node_id: "7"
+        input: "text"
+      image:
+        node_id: "52"
+        input: "image"
+        upload: true
+      seed:
+        node_id: ["57", "58"]
+        input: "noise_seed"
+        type: "int"
+      width:
+        node_id: "50"
+        input: "width"
+        type: "int"
+      height:
+        node_id: "50"
+        input: "height"
+        type: "int"
+      length:
+        node_id: "50"
+        input: "length"
+        type: "int"
+
+  # 任务类型 3：LatentSync-1.6 对口型
+  lipsync:
+    workflow: "workflows/lipsync_latentsync_api.example.json"
+    output_prefix_node:
+      node_id: "40"
+      input: "filename_prefix"
+    bindings:
+      video:
+        node_id: "10"
+        input: "video"
+        upload: true
+      audio:
+        node_id: "11"
+        input: "audio"
+        upload: true
+      seed:
+        node_id: "20"
+        input: "seed"
+        type: "int"
+      lips_expression:
+        node_id: "20"
+        input: "lips_expression"
+        type: "float"
+      inference_steps:
+        node_id: "20"
+        input: "inference_steps"
+        type: "int"

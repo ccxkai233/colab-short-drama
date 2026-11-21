@@ -1,0 +1,20 @@
+[project]
+name = "short-drama-factory"
+version = "0.1.0"
+description = "Local Brain + Cloud Muscle AI Short-Drama Production Pipeline (CLI + Colab ComfyUI)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31.0",
+    "PyYAML>=6.0.1",
+    "python-dotenv>=1.0.1",
+    "websocket-client>=1.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.uv]
+package = false

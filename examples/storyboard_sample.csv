@@ -1,0 +1,4 @@
+shot_id,task_type,prompt,negative_prompt,image,video,audio,seed,width,height,length,steps,lips_expression,inference_steps
+S001,t2i_flux,"cinematic vertical 9:16 close-up of a determined young CEO in tailored dark coat standing in rainy neon alley, dramatic rim light, photorealistic","blurry, cartoon, deformed, watermark",,,,1001,768,1344,,24,,
+S002,i2v_wan22,"slow camera push-in, rain falling softly, character blinks and looks sharply toward camera, subtle hair movement","static, flickering, distorted face",sample_storyboard.png,,,-1,480,832,81,,,
+S003,lipsync,,,,sample_face_25fps.mp4,sample_dialogue_16k.wav,42,,,,,1.5,20

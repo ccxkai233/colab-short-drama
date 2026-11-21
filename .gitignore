@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Secrets & local config
+.env
+configs/workflow_bindings.yaml
+
+# Local media & runtime outputs (keep folder structure via .gitkeep)
+workspace/raw_input/*
+!workspace/raw_input/.gitkeep
+workspace/clean_input/*
+!workspace/clean_input/.gitkeep
+workspace/output/*
+!workspace/output/.gitkeep
+workspace/logs/*
+!workspace/logs/.gitkeep
+
+# OS & editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

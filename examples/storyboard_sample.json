@@ -1,0 +1,35 @@
+{
+  "project": "EP01_Demo",
+  "shots": [
+    {
+      "shot_id": "S001",
+      "task_type": "t2i_flux",
+      "prompt": "cinematic vertical 9:16 close-up of a determined young CEO in tailored dark coat standing in rainy neon alley, dramatic rim light, photorealistic",
+      "negative_prompt": "blurry, cartoon, deformed, watermark",
+      "seed": 1001,
+      "width": 768,
+      "height": 1344,
+      "steps": 24
+    },
+    {
+      "shot_id": "S002",
+      "task_type": "i2v_wan22",
+      "prompt": "slow camera push-in, rain falling softly, character blinks and looks sharply toward camera, subtle hair movement",
+      "negative_prompt": "static, flickering, distorted face",
+      "image": "sample_storyboard.png",
+      "seed": -1,
+      "width": 480,
+      "height": 832,
+      "length": 81
+    },
+    {
+      "shot_id": "S003",
+      "task_type": "lipsync",
+      "video": "sample_face_25fps.mp4",
+      "audio": "sample_dialogue_16k.wav",
+      "seed": 42,
+      "lips_expression": 1.5,
+      "inference_steps": 20
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+# 云端模型清单（由 colab/download_models.py 读取，支持按分组开关拉取）
+# 目标路径均相对于 ComfyUI 根目录（例如 /content/ComfyUI）
+#
+# type 说明：
+#   - snapshot: 使用 huggingface_hub.snapshot_download 拉取整个仓库到 target_dir
+#   - file:     使用 huggingface_hub.hf_hub_download 拉取单个文件到 target_dir/filename
+#   - url:      使用 aria2c/urllib 直接下载直链文件到 target_dir/filename
+
+groups:
+  # 1. LatentSync 1.6 对口型（含必需的离线 VAE）
+  latentsync:
+    description: "ByteDance LatentSync-1.6 + 必需离线 VAE (stabilityai/sd-vae-ft-mse)"
+    items:
+      - name: "LatentSync-1.6 主权重与 Whisper"
+        type: snapshot
+        repo_id: "ByteDance/LatentSync-1.6"
+        target_dir: "models/checkpoints/LatentSync-1.6"
+        ignore_patterns:
+          - "*.md"
+          - ".gitattributes"
+      - name: "LatentSync 离线加载所需 VAE (sd-vae-ft-mse)"
+        type: snapshot
+        repo_id: "stabilityai/sd-vae-ft-mse"
+        target_dir: "models/checkpoints/LatentSync-1.6/vae"
+        ignore_patterns:
+          - "*.md"
+          - ".gitattributes"
+          - "*.ckpt"
+
+  # 2. Wan 2.2 14B 图生视频（FP8 量化版：L4 24GB / A100 / G4 通吃，推荐默认）
+  wan22_fp8:
+    description: "Wan 2.2 I2V 14B FP8 (High/Low Noise MoE + UMT5-XXL FP8 + Wan 2.1 VAE)"
+    items:
+      - name: "Wan 2.2 I2V 14B High-Noise FP8"
+        type: file
+        repo_id: "Comfy-Org/Wan_2.2_ComfyUI_Repackaged"
+        repo_filename: "split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"
+        target_dir: "models/diffusion_models"
+        local_filename: "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"
+      - name: "Wan 2.2 I2V 14B Low-Noise FP8"
+        type: file
+        repo_id: "Comfy-Org/Wan_2.2_ComfyUI_Repackaged"
+        repo_filename: "split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
+        target_dir: "models/diffusion_models"
+        local_filename: "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
+      - name: "Wan UMT5-XXL FP8 Text Encoder"
+        type: file
+        repo_id: "Comfy-Org/Wan_2.2_ComfyUI_Repackaged"
+        repo_filename: "split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+        target_dir: "models/text_encoders"
+        local_filename: "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+      - name: "Wan 2.1 VAE (Wan 2.2 14B 专用)"
+        type: file
+        repo_id: "Comfy-Org/Wan_2.2_ComfyUI_Repackaged"
+        repo_filename: "split_files/vae/wan_2.1_vae.safetensors"
+        target_dir: "models/vae"
+        local_filename: "wan_2.1_vae.safetensors"
+
+  # 3. Wan 2.2 14B 图生视频（FP16 原精度版：仅建议 A100 80GB 使用）
+  wan22_fp16:
+    description: "Wan 2.2 I2V 14B FP16 原版（体积大，推荐仅 A100 80GB 启用）"
+    items:
+      - name: "Wan 2.2 I2V 14B High-Noise FP16"
+        type: file
+        repo_id: "Comfy-Org/Wan_2.2_ComfyUI_Repackaged"
+        repo_filename: "split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp16.safetensors"
+        target_dir: "models/diffusion_models"
+        local_filename: "wan2.2_i2v_high_noise_14B_fp16.safetensors"
+      - name: "Wan 2.2 I2V 14B Low-Noise FP16"
+        type: file
+        repo_id: "Comfy-Org/Wan_2.2_ComfyUI_Repackaged"
+        repo_filename: "split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp16.safetensors"
+        target_dir: "models/diffusion_models"
+        local_filename: "wan2.2_i2v_low_noise_14B_fp16.safetensors"
+      - name: "Wan UMT5-XXL FP16 Text Encoder"
+        type: file
+        repo_id: "Comfy-Org/Wan_2.2_ComfyUI_Repackaged"
+        repo_filename: "split_files/text_encoders/umt5_xxl_fp16.safetensors"
+        target_dir: "models/text_encoders"
+        local_filename: "umt5_xxl_fp16.safetensors"
+      - name: "Wan 2.1 VAE"
+        type: file
+        repo_id: "Comfy-Org/Wan_2.2_ComfyUI_Repackaged"
+        repo_filename: "split_files/vae/wan_2.1_vae.safetensors"
+        target_dir: "models/vae"
+        local_filename: "wan_2.1_vae.safetensors"
+
+  # 4. FLUX.1-dev FP8（短剧主力生图，一体包，含 CLIP/T5/VAE，生态 LoRA 最全）
+  flux_dev:
+    description: "FLUX.1-dev FP8 一体包 Checkpoint（Load Checkpoint 直接加载，兼容绝大多数角色 LoRA）"
+    items:
+      - name: "FLUX.1-dev FP8 All-in-One Checkpoint"
+        type: file
+        repo_id: "Comfy-Org/flux1-dev"
+        repo_filename: "flux1-dev-fp8.safetensors"
+        target_dir: "models/checkpoints"
+        local_filename: "flux1-dev-fp8.safetensors"
+
+  # 5. FLUX.1-Kontext-dev FP8（角色一致性换机位/改场景神器）
+  flux_kontext:
+    description: "FLUX.1-Kontext-dev FP8 + 分离式 CLIP/T5/VAE（参考图改图/保人脸一致性）"
+    items:
+      - name: "FLUX.1-Kontext-dev FP8 Diffusion Model"
+        type: file
+        repo_id: "Comfy-Org/flux1-kontext-dev_ComfyUI"
+        repo_filename: "split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors"
+        target_dir: "models/diffusion_models"
+        local_filename: "flux1-dev-kontext_fp8_scaled.safetensors"
+      - name: "FLUX CLIP-L Text Encoder"
+        type: file
+        repo_id: "comfyanonymous/flux_text_encoders"
+        repo_filename: "clip_l.safetensors"
+        target_dir: "models/text_encoders"
+        local_filename: "clip_l.safetensors"
+      - name: "FLUX T5-XXL FP8 Text Encoder"
+        type: file
+        repo_id: "comfyanonymous/flux_text_encoders"
+        repo_filename: "t5xxl_fp8_e4m3fn_scaled.safetensors"
+        target_dir: "models/text_encoders"
+        local_filename: "t5xxl_fp8_e4m3fn_scaled.safetensors"
+      - name: "FLUX AE VAE (需要已同意 FLUX.1-dev 协议)"
+        type: file
+        repo_id: "black-forest-labs/FLUX.1-dev"
+        repo_filename: "ae.safetensors"
+        target_dir: "models/vae"
+        local_filename: "ae.safetensors"
+
+  # 6. FLUX.1-schnell FP8（4 步极速草稿版，免协议审批）
+  flux_schnell:
+    description: "FLUX.1-schnell FP8 一体包（4 步极速预览分镜构图）"
+    items:
+      - name: "FLUX.1-schnell FP8 Checkpoint"
+        type: file
+        repo_id: "Comfy-Org/flux1-schnell"
+        repo_filename: "flux1-schnell-fp8.safetensors"
+        target_dir: "models/checkpoints"
+        local_filename: "flux1-schnell-fp8.safetensors"
