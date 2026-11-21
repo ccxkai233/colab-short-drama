@@ -46,6 +46,8 @@ CORE_PLUGINS = [
 
 # comfyui-latentsync-enhanced 已知缺失依赖（显式补装）+ 工具依赖
 EXTRA_PIP_PACKAGES = [
+    "decord",
+    "kornia",
     "insightface",
     "onnxruntime-gpu",
     "librosa",
